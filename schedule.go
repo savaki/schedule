@@ -120,35 +120,6 @@ func New(from, to Time, weekdays ...time.Weekday) Schedule {
 	return DateRange("", "", from, to, weekdays...)
 }
 
-func ContainsDate(date time.Time, ss ...Schedule) bool {
-	for _, s := range ss {
-		if s.Contains(date) {
-			return true
-		}
-	}
-	return false
-}
-
-func ContainsWeekday(weekday time.Weekday, ss ...Schedule) bool {
-	for _, s := range ss {
-		if s.ContainsWeekday(weekday) {
-			return true
-		}
-	}
-	return false
-}
-
-func DateRange(dateFrom, dateTo string, from, to Time, weekdays ...time.Weekday) Schedule {
-	buffer := buildSchedule(dateFrom, dateTo, from, to, weekdays)
-	return Schedule(buffer)
-}
-
-func ExcludeDateRange(dateFrom, dateTo string, weekdays ...time.Weekday) Schedule {
-	buffer := buildSchedule(dateFrom, dateTo, 0, 0, weekdays)
-	buffer = append(buffer, exclude...)
-	return Schedule(buffer)
-}
-
 func (s Schedule) index(n int) (int, int, bool) {
 	if n < 1 {
 		return 0, 0, false
@@ -333,6 +304,30 @@ func (s Schedule) Weekdays() []time.Weekday {
 	return ww
 }
 
+type Schedules []Schedule
+
+func (s Schedules) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
+	var ss []string
+	for _, v := range s {
+		ss = append(ss, v.String())
+	}
+
+	item.SS = aws.StringSlice(ss)
+
+	return nil
+}
+
+func (s *Schedules) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
+	var v Schedules
+	for _, s := range aws.StringValueSlice(item.SS) {
+		v = append(v, Schedule(s))
+	}
+
+	*s = v
+
+	return nil
+}
+
 func buildSchedule(dateFrom string, dateTo string, from Time, to Time, weekdays []time.Weekday) []byte {
 	buffer := make([]byte, 0, 64)
 	buffer = append(buffer, '1') // version
@@ -352,4 +347,33 @@ func buildSchedule(dateFrom string, dateTo string, from Time, to Time, weekdays 
 	}
 	buffer = append(buffer, ':')
 	return buffer
+}
+
+func ContainsDate(date time.Time, ss ...Schedule) bool {
+	for _, s := range ss {
+		if s.Contains(date) {
+			return true
+		}
+	}
+	return false
+}
+
+func ContainsWeekday(weekday time.Weekday, ss ...Schedule) bool {
+	for _, s := range ss {
+		if s.ContainsWeekday(weekday) {
+			return true
+		}
+	}
+	return false
+}
+
+func DateRange(dateFrom, dateTo string, from, to Time, weekdays ...time.Weekday) Schedule {
+	buffer := buildSchedule(dateFrom, dateTo, from, to, weekdays)
+	return Schedule(buffer)
+}
+
+func ExcludeDateRange(dateFrom, dateTo string, weekdays ...time.Weekday) Schedule {
+	buffer := buildSchedule(dateFrom, dateTo, 0, 0, weekdays)
+	buffer = append(buffer, exclude...)
+	return Schedule(buffer)
 }

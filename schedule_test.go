@@ -428,3 +428,18 @@ func Test_getDayOfTheWeekBytes(t *testing.T) {
 	_, ok := getDayOfTheWeekBytes([]byte("nope"))
 	assert.False(t, ok)
 }
+
+func TestSchedules_Serialize(t *testing.T) {
+	want := Schedules{
+		New(800, 1200),
+		New(1300, 1700),
+	}
+
+	item, err := dynamodbattribute.Marshal(want)
+	assert.Nil(t, err)
+
+	var got Schedules
+	err = dynamodbattribute.Unmarshal(item, &got)
+	assert.Nil(t, err)
+	assert.Equal(t, want, got)
+}
