@@ -430,16 +430,29 @@ func Test_getDayOfTheWeekBytes(t *testing.T) {
 }
 
 func TestSchedules_Serialize(t *testing.T) {
-	want := Schedules{
-		New(800, 1200),
-		New(1300, 1700),
-	}
+	t.Run("ok", func(t *testing.T) {
+		want := Schedules{
+			New(800, 1200),
+			New(1300, 1700),
+		}
 
-	item, err := dynamodbattribute.Marshal(want)
-	assert.Nil(t, err)
+		item, err := dynamodbattribute.Marshal(want)
+		assert.Nil(t, err)
 
-	var got Schedules
-	err = dynamodbattribute.Unmarshal(item, &got)
-	assert.Nil(t, err)
-	assert.Equal(t, want, got)
+		var got Schedules
+		err = dynamodbattribute.Unmarshal(item, &got)
+		assert.Nil(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("nil", func(t *testing.T) {
+		var want Schedules
+		item, err := dynamodbattribute.Marshal(want)
+		assert.Nil(t, err)
+
+		var got Schedules
+		err = dynamodbattribute.Unmarshal(item, &got)
+		assert.Nil(t, err)
+		assert.Equal(t, want, got)
+	})
 }
