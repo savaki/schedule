@@ -26,6 +26,16 @@ func TestTimeSlot_Sub(t *testing.T) {
 			Sub:  afternoon,
 			Want: []TimeSlot{morning},
 		},
+		"overlap from": {
+			Time: NewTimeSlot(1400, 1700),
+			Sub:  NewTimeSlot(1200, 1500),
+			Want: []TimeSlot{NewTimeSlot(1500, 1700)},
+		},
+		"overlap to": {
+			Time: NewTimeSlot(1400, 1700),
+			Sub:  NewTimeSlot(1600, 1800),
+			Want: []TimeSlot{NewTimeSlot(1400, 1600)},
+		},
 		"equal": {
 			Time: morning,
 			Sub:  morning,
@@ -41,7 +51,7 @@ func TestTimeSlot_Sub(t *testing.T) {
 			Sub:  afternoon,
 			Want: []TimeSlot{morning},
 		},
-		"middle": {
+		"inside": {
 			Time: day,
 			Sub:  lunch,
 			Want: []TimeSlot{
@@ -98,6 +108,11 @@ func TestSub(t *testing.T) {
 			Slots: []TimeSlot{head, tail},
 			Sub:   midday,
 			Want:  []TimeSlot{morning, lunch, tail},
+		},
+		"overlap": {
+			Slots: []TimeSlot{NewTimeSlot(1400, 1700)},
+			Sub:   NewTimeSlot(1200, 1500),
+			Want:  []TimeSlot{NewTimeSlot(1500, 1700)},
 		},
 	}
 
@@ -332,6 +347,67 @@ func TestSubAll(t *testing.T) {
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
 			got := SubAll(tc.Input, tc.Sans)
+			assert.Equal(t, tc.Want, got)
+		})
+	}
+}
+
+func TestTimeSlot_Overlaps(t *testing.T) {
+	testCases := map[string]struct {
+		A    TimeSlot
+		B    TimeSlot
+		Want bool
+	}{
+		"outside": {
+			A:    NewTimeSlot(1000, 1700),
+			B:    NewTimeSlot(1100, 1200),
+			Want: true,
+		},
+		"inside": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1000, 1700),
+			Want: true,
+		},
+		"same": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1100, 1200),
+			Want: true,
+		},
+		"overlap from": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1030, 1130),
+			Want: true,
+		},
+		"overlap to": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1130, 1230),
+			Want: true,
+		},
+		"abut to": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1130, 1200),
+			Want: true,
+		},
+		"abut to - outside": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1200, 1300),
+			Want: true,
+		},
+		"abut from": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1100, 1130),
+			Want: true,
+		},
+		"abut from - outside": {
+			A:    NewTimeSlot(1100, 1200),
+			B:    NewTimeSlot(1000, 1100),
+			Want: true,
+		},
+	}
+
+	for label, tc := range testCases {
+		t.Run(label, func(t *testing.T) {
+			got := tc.A.Overlaps(tc.B)
 			assert.Equal(t, tc.Want, got)
 		})
 	}

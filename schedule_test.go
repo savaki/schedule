@@ -534,6 +534,7 @@ func TestSchedules_Next(t *testing.T) {
 	testCases := map[string]struct {
 		Input  Schedules
 		Buffer time.Duration
+		Sans   []TimeSlot
 		Want   time.Time
 	}{
 		"same day": {
@@ -545,6 +546,12 @@ func TestSchedules_Next(t *testing.T) {
 			Input:  Schedules{New(1400, 1700)},
 			Buffer: 30 * time.Minute,
 			Want:   NewTime(14, 0).Align(date),
+		},
+		"later that day with excluding range": {
+			Input:  Schedules{New(1400, 1700)},
+			Sans:   []TimeSlot{NewTimeSlot(1200, 1500)},
+			Buffer: 30 * time.Minute,
+			Want:   NewTime(15, 0).Align(date),
 		},
 		"next day": {
 			Input:  Schedules{New(900, 1000)},
@@ -560,7 +567,7 @@ func TestSchedules_Next(t *testing.T) {
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			got, err := tc.Input.Next(date, tc.Buffer)
+			got, err := tc.Input.Next(date, tc.Buffer, tc.Sans...)
 			assert.Nil(t, err)
 			assert.Equal(t, tc.Want.Format(time.RFC822), got.Format(time.RFC822))
 		})

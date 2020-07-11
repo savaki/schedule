@@ -332,8 +332,8 @@ func (s Schedules) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) 
 	return nil
 }
 
-func (s Schedules) Next(date time.Time, buffer time.Duration) (time.Time, error) {
-	return Next(date, buffer, s...)
+func (s Schedules) Next(date time.Time, buffer time.Duration, sans ...TimeSlot) (time.Time, error) {
+	return Next(date, buffer, s, sans...)
 }
 
 // TimeSlots returns the set of time slots for the date requested
@@ -442,13 +442,18 @@ func ExcludeDateRange(dateFrom, dateTo string, weekdays ...time.Weekday) Schedul
 
 // Next returns the next time available from the Schedule provided with at least
 // buffer duration remaining in the schedule
-func Next(date time.Time, buffer time.Duration, ss ...Schedule) (time.Time, error) {
+func Next(date time.Time, buffer time.Duration, ss Schedules, sans ...TimeSlot) (time.Time, error) {
 	const daysOut = 7
 	for i := 0; i < daysOut; i++ {
 		d := date.AddDate(0, 0, i)
 		timeSlots, err := After(d, ss...)
 		if err != nil {
 			return time.Time{}, err
+		}
+
+		if len(sans) > 0 {
+			timeSlots = SubAll(timeSlots, sans)
+			fmt.Println("timeSlots", timeSlots, sans)
 		}
 
 		for _, timeSlot := range timeSlots {

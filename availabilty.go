@@ -44,10 +44,10 @@ func (t TimeSlot) Duration() time.Duration {
 // and returns the remaining TimeSlots
 func (t TimeSlot) Sub(v TimeSlot) []TimeSlot {
 	switch {
-	case !t.Contains(v):
+	case !t.Overlaps(v):
 		return []TimeSlot{t}
 
-	case t.From == v.From && t.To == v.To: // exact
+	case v.Contains(t): // v superset of t
 		return nil
 
 	case t.From == v.From: // sub head
@@ -67,23 +67,30 @@ func (t TimeSlot) Sub(v TimeSlot) []TimeSlot {
 		}
 
 	default:
-		return []TimeSlot{
-			{
+		var results []TimeSlot
+		if v.From > t.From {
+			results = append(results, TimeSlot{
 				From: t.From,
 				To:   v.From,
-			},
-			{
+			})
+		}
+		if t.To > v.To {
+			results = append(results, TimeSlot{
 				From: v.To,
 				To:   t.To,
-			},
+			})
 		}
+		return results
 	}
 }
 
 // Overlaps returns true if the any portion of the provide TimeSlot
 // overlaps the current time Slot
 func (t TimeSlot) Overlaps(v TimeSlot) bool {
-	return t.From <= v.From && t.To >= v.From
+	return (t.From < v.From && t.To > v.To) || // t wraps v
+		(v.From < t.From && v.To > t.To) || // v wrap t
+		(v.From <= t.From && v.To >= t.From) || // overlapped from
+		(v.From <= t.To && v.To >= t.To) // overlapped to
 }
 
 // Union merges two time slots. Any time between the two TimeSlots
@@ -142,11 +149,10 @@ func Availability(date time.Time, schedules []Schedule, reserved []TimeSlot) []T
 // Sub returns the block of time slots sans the provided time slot
 func Sub(blocks []TimeSlot, v TimeSlot) []TimeSlot {
 	var results []TimeSlot
-	for index, block := range blocks {
-		if block.Contains(v) {
+	for _, block := range blocks {
+		if block.Overlaps(v) {
 			results = append(results, block.Sub(v)...)
-			results = append(results, blocks[index+1:]...)
-			break
+			continue
 		}
 		results = append(results, block)
 	}
