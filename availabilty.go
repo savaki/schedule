@@ -153,6 +153,14 @@ func Sub(blocks []TimeSlot, v TimeSlot) []TimeSlot {
 	return results
 }
 
+// SubAll removes all sans time slots from the block provided
+func SubAll(blocks, sans []TimeSlot) []TimeSlot {
+	for _, s := range sans {
+		blocks = Sub(blocks, s)
+	}
+	return blocks
+}
+
 func Union(blocks ...TimeSlot) []TimeSlot {
 	sort.Slice(blocks, func(i, j int) bool {
 		ii, jj := blocks[i], blocks[j]

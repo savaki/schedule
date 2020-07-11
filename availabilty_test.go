@@ -290,3 +290,49 @@ func TestTimeSlot_Duration(t *testing.T) {
 		})
 	}
 }
+
+func TestSubAll(t *testing.T) {
+	testCases := map[string]struct {
+		Input []TimeSlot
+		Sans  []TimeSlot
+		Want  []TimeSlot
+	}{
+		"nil": {},
+		"nop": {
+			Input: []TimeSlot{
+				NewTimeSlot(900, 1200),
+			},
+			Sans: nil,
+			Want: []TimeSlot{
+				NewTimeSlot(900, 1200),
+			},
+		},
+		"remove all": {
+			Input: []TimeSlot{
+				NewTimeSlot(900, 1200),
+			},
+			Sans: []TimeSlot{
+				NewTimeSlot(900, 1200),
+			},
+			Want: nil,
+		},
+		"remove partial": {
+			Input: []TimeSlot{
+				NewTimeSlot(900, 1200),
+			},
+			Sans: []TimeSlot{
+				NewTimeSlot(900, 1100),
+			},
+			Want: []TimeSlot{
+				NewTimeSlot(1100, 1200),
+			},
+		},
+	}
+
+	for label, tc := range testCases {
+		t.Run(label, func(t *testing.T) {
+			got := SubAll(tc.Input, tc.Sans)
+			assert.Equal(t, tc.Want, got)
+		})
+	}
+}
