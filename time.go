@@ -25,6 +25,21 @@ func NewTimeFromDate(date time.Time) Time {
 	return NewTime(date.Hour(), date.Minute())
 }
 
+func (t Time) Add(d time.Duration) Time {
+	return t.AddMinutes(int(d / time.Minute))
+}
+
+func (t Time) AddMinutes(v int) Time {
+	h, m := t.Hour(), t.Minute()
+	m += v
+
+	h += m / 60
+	h %= 24
+	m %= 60
+
+	return NewTime(h, m)
+}
+
 func (t Time) Append(buffer []byte) []byte {
 	h, m := t.Hour(), t.Minute()
 	if h < 10 {
