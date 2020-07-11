@@ -532,42 +532,32 @@ func TestSchedules_Next(t *testing.T) {
 	date := time.Date(2020, time.July, 20, 11, 0, 0, 0, time.Local)
 
 	testCases := map[string]struct {
-		Input  Schedules
-		Buffer time.Duration
-		Sans   []TimeSlot
-		Want   time.Time
+		Input Schedules
+		Sans  []TimeSlot
+		Want  time.Time
 	}{
 		"same day": {
-			Input:  Schedules{New(900, 1700)},
-			Buffer: 30 * time.Minute,
-			Want:   date,
+			Input: Schedules{New(900, 1700)},
+			Want:  date,
 		},
 		"later that day": {
-			Input:  Schedules{New(1400, 1700)},
-			Buffer: 30 * time.Minute,
-			Want:   NewTime(14, 0).Align(date),
+			Input: Schedules{New(1400, 1700)},
+			Want:  NewTime(14, 0).Align(date),
 		},
 		"later that day with excluding range": {
-			Input:  Schedules{New(1400, 1700)},
-			Sans:   []TimeSlot{NewTimeSlot(1200, 1500)},
-			Buffer: 30 * time.Minute,
-			Want:   NewTime(15, 0).Align(date),
+			Input: Schedules{New(1400, 1700)},
+			Sans:  []TimeSlot{NewTimeSlot(1200, 1500)},
+			Want:  NewTime(15, 0).Align(date),
 		},
 		"next day": {
-			Input:  Schedules{New(900, 1000)},
-			Buffer: 30 * time.Minute,
-			Want:   NewTime(9, 0).Align(date).AddDate(0, 0, 1),
-		},
-		"require at least buffer remaining": {
-			Input:  Schedules{New(1130, 1145), New(1200, 1230)},
-			Buffer: 30 * time.Minute,
-			Want:   NewTime(12, 0).Align(date),
+			Input: Schedules{New(900, 1000)},
+			Want:  NewTime(9, 0).Align(date).AddDate(0, 0, 1),
 		},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			got, err := tc.Input.Next(date, tc.Buffer, tc.Sans...)
+			got, err := tc.Input.Next(date, tc.Sans...)
 			assert.Nil(t, err)
 			assert.Equal(t, tc.Want.Format(time.RFC822), got.Format(time.RFC822))
 		})
