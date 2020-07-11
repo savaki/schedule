@@ -453,7 +453,6 @@ func Next(date time.Time, buffer time.Duration, ss Schedules, sans ...TimeSlot) 
 
 		if len(sans) > 0 {
 			timeSlots = SubAll(timeSlots, sans)
-			fmt.Println("timeSlots", timeSlots, sans)
 		}
 
 		for _, timeSlot := range timeSlots {
