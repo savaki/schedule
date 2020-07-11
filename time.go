@@ -21,6 +21,10 @@ func NewTime(hour, minute int) Time {
 	return Time(hour*100 + minute)
 }
 
+func NewTimeFromDate(date time.Time) Time {
+	return NewTime(date.Hour(), date.Minute())
+}
+
 func (t Time) Append(buffer []byte) []byte {
 	h, m := t.Hour(), t.Minute()
 	if h < 10 {

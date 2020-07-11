@@ -3,6 +3,7 @@ package schedule
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -157,6 +158,7 @@ func (s Schedule) validate() error {
 	return nil
 }
 
+// MarshalDynamoDBAttributeValue marshals Schedule for dynamodb
 func (s Schedule) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
 	*item = dynamodb.AttributeValue{
 		S: aws.String(string(s)),
@@ -164,6 +166,7 @@ func (s Schedule) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) e
 	return nil
 }
 
+// UnmarshalDynamoDBAttributeValue unmarshals Schedule for dynamodb
 func (s *Schedule) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
 	if item == nil || item.S == nil {
 		return fmt.Errorf("dynamodb.AttributeValue not a Schedule:  missing S key")
@@ -178,6 +181,7 @@ func (s *Schedule) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue
 	return nil
 }
 
+// DateFrom extracts the from date from the schedule
 func (s Schedule) DateFrom() (string, bool) {
 	i, j, ok := s.index(indexDateFrom)
 	if !ok {
@@ -187,6 +191,7 @@ func (s Schedule) DateFrom() (string, bool) {
 	return string(s[i:j]), true
 }
 
+// DateTo extracts the from date from the schedule
 func (s Schedule) DateTo() (string, bool) {
 	i, j, ok := s.index(indexDateTo)
 	if !ok {
@@ -241,6 +246,12 @@ func (s Schedule) From() (Time, error) {
 	}
 
 	return Time(v), nil
+}
+
+// HasDateRange indicates Schedule is scoped to a date range
+func (s Schedule) HasDateRange() bool {
+	_, _, ok := s.index(indexDateFrom)
+	return ok
 }
 
 func (s Schedule) IsExclude() bool {
@@ -306,6 +317,10 @@ func (s Schedule) Weekdays() []time.Weekday {
 
 type Schedules []Schedule
 
+func (s Schedules) After(date time.Time) ([]TimeSlot, error) {
+	return After(date, s...)
+}
+
 func (s Schedules) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
 	var ss []string
 	for _, v := range s {
@@ -315,6 +330,15 @@ func (s Schedules) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) 
 	item.SS = aws.StringSlice(ss)
 
 	return nil
+}
+
+func (s Schedules) Next(date time.Time, buffer time.Duration) (time.Time, error) {
+	return Next(date, buffer, s...)
+}
+
+// TimeSlots returns the set of time slots for the date requested
+func (s Schedules) TimeSlots(date time.Time) ([]TimeSlot, error) {
+	return TimeSlots(date, s...)
 }
 
 func (s *Schedules) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
@@ -349,6 +373,39 @@ func buildSchedule(dateFrom string, dateTo string, from Time, to Time, weekdays 
 	return buffer
 }
 
+func alignMidnight(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+// After returns the set of TimeSlots that occur on the date provided AND
+// after the time provided.  Results will be unioned and sorted
+func After(date time.Time, ss ...Schedule) ([]TimeSlot, error) {
+	timeSlots, err := TimeSlots(date, ss...)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		want    = NewTimeFromDate(date)
+		matches []TimeSlot
+	)
+
+	for _, timeSlot := range timeSlots {
+		switch {
+		case timeSlot.To <= want:
+			continue
+		case timeSlot.From <= want:
+			matches = append(matches, NewTimeSlot(want, timeSlot.To))
+		default:
+			matches = append(matches, timeSlot)
+		}
+	}
+
+	return matches, nil
+}
+
+// ContainsDate returns true if the specified date and time is contained in any
+// of the schedules provided
 func ContainsDate(date time.Time, ss ...Schedule) bool {
 	for _, s := range ss {
 		if s.Contains(date) {
@@ -358,6 +415,7 @@ func ContainsDate(date time.Time, ss ...Schedule) bool {
 	return false
 }
 
+// ContainsWeekday returns true if the weekday is contained within the provided schedule
 func ContainsWeekday(weekday time.Weekday, ss ...Schedule) bool {
 	for _, s := range ss {
 		if s.ContainsWeekday(weekday) {
@@ -367,13 +425,80 @@ func ContainsWeekday(weekday time.Weekday, ss ...Schedule) bool {
 	return false
 }
 
+// DateRange returns a new Schedule from a date range.  Useful for special holiday
+// hours.
 func DateRange(dateFrom, dateTo string, from, to Time, weekdays ...time.Weekday) Schedule {
 	buffer := buildSchedule(dateFrom, dateTo, from, to, weekdays)
 	return Schedule(buffer)
 }
 
+// ExcludeDateRange defines an excluded Schedule for a date range.  Useful for
+// holiday closed hours
 func ExcludeDateRange(dateFrom, dateTo string, weekdays ...time.Weekday) Schedule {
 	buffer := buildSchedule(dateFrom, dateTo, 0, 0, weekdays)
 	buffer = append(buffer, exclude...)
 	return Schedule(buffer)
+}
+
+// Next returns the next time available from the Schedule provided with at least
+// buffer duration remaining in the schedule
+func Next(date time.Time, buffer time.Duration, ss ...Schedule) (time.Time, error) {
+	const daysOut = 7
+	for i := 0; i < daysOut; i++ {
+		d := date.AddDate(0, 0, i)
+		timeSlots, err := After(d, ss...)
+		if err != nil {
+			return time.Time{}, err
+		}
+
+		for _, timeSlot := range timeSlots {
+			if timeSlot.Duration() >= buffer {
+				return timeSlot.From.Align(d), nil
+			}
+		}
+
+		if i == 0 {
+			date = alignMidnight(date)
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("no time matches in next %v days", daysOut)
+}
+
+// TimeSlots returns the timeslots for the date
+func TimeSlots(date time.Time, ss ...Schedule) ([]TimeSlot, error) {
+	var regular, holiday []TimeSlot
+	for _, s := range ss {
+		if !s.Contains(date) {
+			continue
+		}
+		if s.IsExclude() {
+			return nil, nil // excluded date
+		}
+
+		timeSlot, err := s.TimeSlot()
+		if err != nil {
+			return nil, err
+		}
+
+		if s.HasDateRange() {
+			holiday = append(holiday, timeSlot)
+			continue
+		}
+
+		regular = append(regular, timeSlot)
+	}
+
+	slots := holiday
+	if len(slots) == 0 {
+		slots = regular
+	}
+
+	slots = Union(slots...)
+
+	sort.Slice(slots, func(i, j int) bool {
+		return slots[i].From < slots[j].From
+	})
+
+	return slots, nil
 }

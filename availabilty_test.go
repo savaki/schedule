@@ -259,3 +259,34 @@ func TestSample(t *testing.T) {
 	blocks := Availability(date, []Schedule{a, b, c}, []TimeSlot{reservation})
 	fmt.Println(blocks)
 }
+
+func TestTimeSlot_Duration(t *testing.T) {
+	testCases := map[string]struct {
+		TimeSlot TimeSlot
+		Want     time.Duration
+	}{
+		"nada": {
+			TimeSlot: NewTimeSlot(900, 900),
+			Want:     0,
+		},
+		"< 1hr": {
+			TimeSlot: NewTimeSlot(900, 930),
+			Want:     30 * time.Minute,
+		},
+		"= 1hr": {
+			TimeSlot: NewTimeSlot(900, 1000),
+			Want:     time.Hour,
+		},
+		"> 1hr": {
+			TimeSlot: NewTimeSlot(900, 1130),
+			Want:     150 * time.Minute,
+		},
+	}
+
+	for label, tc := range testCases {
+		t.Run(label, func(t *testing.T) {
+			got := tc.TimeSlot.Duration()
+			assert.Equal(t, tc.Want, got)
+		})
+	}
+}

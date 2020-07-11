@@ -27,6 +27,19 @@ func (t TimeSlot) Contains(v TimeSlot) bool {
 	return t.From <= v.From && t.To >= v.To
 }
 
+// Duration of this TimeSlot
+func (t TimeSlot) Duration() time.Duration {
+	h := t.To.Hour() - t.From.Hour()
+	m := t.To.Minute() - t.From.Minute()
+
+	if m < 0 {
+		m += 60
+		h--
+	}
+
+	return time.Duration(h*60+m) * time.Minute
+}
+
 // Sub subtracts the TimeSlot provided the current TimeSlot
 // and returns the remaining TimeSlots
 func (t TimeSlot) Sub(v TimeSlot) []TimeSlot {
@@ -126,6 +139,7 @@ func Availability(date time.Time, schedules []Schedule, reserved []TimeSlot) []T
 	return blocks
 }
 
+// Sub returns the block of time slots sans the provided time slot
 func Sub(blocks []TimeSlot, v TimeSlot) []TimeSlot {
 	var results []TimeSlot
 	for index, block := range blocks {

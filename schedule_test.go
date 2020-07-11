@@ -456,3 +456,118 @@ func TestSchedules_Serialize(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 }
+
+func TestSchedules_After(t *testing.T) {
+	ss := Schedules{
+		New(730, 830),
+		New(1300, 1700),
+		New(900, 1200),
+	}
+
+	date := time.Date(2020, time.July, 20, 11, 0, 0, 0, time.Local)
+	got, err := ss.After(date)
+	assert.Nil(t, err)
+	assert.Len(t, got, 2)
+	assert.Equal(t, NewTimeSlot(1100, 1200), got[0])
+	assert.Equal(t, NewTimeSlot(1300, 1700), got[1])
+}
+
+func TestSchedules_TimeSlots(t *testing.T) {
+	date := time.Date(2020, time.July, 20, 11, 0, 0, 0, time.Local)
+	dateStr := date.Format("2006-01-02")
+
+	testCases := map[string]struct {
+		Input Schedules
+		Want  []TimeSlot
+	}{
+		"all": {
+			Input: Schedules{
+				New(1300, 1700),
+				New(900, 1200),
+			},
+			Want: []TimeSlot{
+				NewTimeSlot(900, 1200),
+				NewTimeSlot(1300, 1700),
+			},
+		},
+		"union": {
+			Input: Schedules{
+				New(1200, 1700),
+				New(900, 1200),
+			},
+			Want: []TimeSlot{
+				NewTimeSlot(900, 1700),
+			},
+		},
+		"exclude date": {
+			Input: Schedules{
+				New(1200, 1700),
+				New(900, 1200),
+				ExcludeDateRange(dateStr, dateStr),
+			},
+			Want: nil,
+		},
+		"holiday schedule takes precedence": {
+			Input: Schedules{
+				New(1200, 1700),
+				New(900, 1200),
+				DateRange(dateStr, dateStr, 1400, 1600),
+			},
+			Want: []TimeSlot{
+				NewTimeSlot(1400, 1600),
+			},
+		},
+	}
+
+	for label, tc := range testCases {
+		t.Run(label, func(t *testing.T) {
+			got, err := tc.Input.TimeSlots(date)
+			assert.Nil(t, err)
+			assert.Equal(t, tc.Want, got)
+		})
+	}
+}
+
+func TestSchedules_Next(t *testing.T) {
+	date := time.Date(2020, time.July, 20, 11, 0, 0, 0, time.Local)
+
+	testCases := map[string]struct {
+		Input  Schedules
+		Buffer time.Duration
+		Want   time.Time
+	}{
+		"same day": {
+			Input:  Schedules{New(900, 1700)},
+			Buffer: 30 * time.Minute,
+			Want:   date,
+		},
+		"later that day": {
+			Input:  Schedules{New(1400, 1700)},
+			Buffer: 30 * time.Minute,
+			Want:   NewTime(14, 0).Align(date),
+		},
+		"next day": {
+			Input:  Schedules{New(900, 1000)},
+			Buffer: 30 * time.Minute,
+			Want:   NewTime(9, 0).Align(date).AddDate(0, 0, 1),
+		},
+		"require at least buffer remaining": {
+			Input:  Schedules{New(1130, 1145), New(1200, 1230)},
+			Buffer: 30 * time.Minute,
+			Want:   NewTime(12, 0).Align(date),
+		},
+	}
+
+	for label, tc := range testCases {
+		t.Run(label, func(t *testing.T) {
+			got, err := tc.Input.Next(date, tc.Buffer)
+			assert.Nil(t, err)
+			assert.Equal(t, tc.Want.Format(time.RFC822), got.Format(time.RFC822))
+		})
+	}
+}
+
+func TestExclude(t *testing.T) {
+	s := ExcludeDateRange("2020-07-01", "2020-07-15")
+	assert.True(t, s.IsExclude())
+}
