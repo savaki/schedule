@@ -27,6 +27,12 @@ func (t TimeSlot) Contains(v TimeSlot) bool {
 	return t.From <= v.From && t.To >= v.To
 }
 
+// ContainsTime returns true if the Time is >= from and < to
+func (t TimeSlot) ContainsTime(tm time.Time) bool {
+	v := NewTime(tm.Hour(), tm.Minute())
+	return v >= t.From && v < t.To
+}
+
 // Duration of this TimeSlot
 func (t TimeSlot) Duration() time.Duration {
 	h := t.To.Hour() - t.From.Hour()
