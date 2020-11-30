@@ -347,6 +347,14 @@ func (s Schedules) Next(date time.Time, sans ...TimeSlot) (time.Time, error) {
 	return Next(date, s, sans...)
 }
 
+func (s Schedules) StringSlice() []string {
+	var ss []string
+	for _, v := range s {
+		ss = append(ss, v.String())
+	}
+	return ss
+}
+
 // TimeSlots returns the set of time slots for the date requested
 func (s Schedules) TimeSlots(date time.Time) ([]TimeSlot, error) {
 	return TimeSlots(date, s...)
