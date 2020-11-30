@@ -3,6 +3,7 @@ package schedule
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -319,6 +320,16 @@ type Schedules []Schedule
 
 func (s Schedules) After(date time.Time) ([]TimeSlot, error) {
 	return After(date, s...)
+}
+
+// Contains returns true if Schedules contains the requested Schedule
+func (s Schedules) Contains(want Schedule) bool {
+	for _, item := range s {
+		if reflect.DeepEqual(item, want) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s Schedules) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
