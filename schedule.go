@@ -202,7 +202,7 @@ func (s Schedule) DateTo() (string, bool) {
 	return string(s[i:j]), true
 }
 
-// ContainsDate matches the provided date (but not time)
+// Contains matches the provided date (but not time)
 func (s Schedule) Contains(date time.Time) bool {
 	if !s.ContainsWeekday(date.Weekday()) {
 		return false
@@ -329,6 +329,26 @@ func (s Schedules) Contains(want Schedule) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// ContainsTime returns true if any of the schedules contains the requested time
+func (s Schedules) ContainsTime(t time.Time) bool {
+	// check excludes first; any excludes will return false
+	for _, v := range s {
+		if v.IsExclude() && v.Contains(t) {
+			return false
+		}
+	}
+
+	// then check included times
+	for _, v := range s {
+		if !v.IsExclude() && v.Contains(t) {
+			return true
+		}
+	}
+
+	// otherwise, default to not included
 	return false
 }
 
