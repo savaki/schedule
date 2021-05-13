@@ -114,6 +114,7 @@ var (
 	bSaturday  = []byte(Saturday)
 )
 
+// Schedule
 // SuMoTuWeThFrSa
 // version:date-from:date-to:weekdays:from-time:to-time:exclude|include
 type Schedule []byte
