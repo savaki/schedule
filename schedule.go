@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -388,6 +389,23 @@ func (s *Schedules) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValu
 	}
 
 	*s = v
+
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (s *Schedules) UnmarshalJSON(data []byte) error {
+	var items []string
+	if err := json.Unmarshal(data, &items); err != nil {
+		return fmt.Errorf("unable to unmarshal Schedules: %w", err)
+	}
+
+	var ss Schedules
+	for _, item := range items {
+		ss = append(ss, Schedule(item))
+	}
+
+	*s = ss
 
 	return nil
 }

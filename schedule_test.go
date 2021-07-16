@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -562,6 +563,17 @@ func TestSchedules_Next(t *testing.T) {
 			assert.Equal(t, tc.Want.Format(time.RFC822), got.Format(time.RFC822))
 		})
 	}
+}
+
+func TestSchedules_UnmarshalJSON(t *testing.T) {
+	var s Schedules
+	err := json.Unmarshal([]byte(`["1:::0500:2100::"]`), &s)
+	assert.Nil(t, err)
+	assert.Len(t, s, 1)
+
+	err = json.Unmarshal([]byte(`null`), &s)
+	assert.Nil(t, err)
+	assert.Len(t, s, 0)
 }
 
 func TestExclude(t *testing.T) {
