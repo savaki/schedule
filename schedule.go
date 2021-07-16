@@ -169,6 +169,11 @@ func (s Schedule) MarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) e
 	return nil
 }
 
+// MarshalJSON implements json.Marshaler
+func (s Schedule) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
+}
+
 // UnmarshalDynamoDBAttributeValue unmarshals Schedule for dynamodb
 func (s *Schedule) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue) error {
 	if item == nil || item.S == nil {
@@ -181,6 +186,18 @@ func (s *Schedule) UnmarshalDynamoDBAttributeValue(item *dynamodb.AttributeValue
 	}
 
 	*s = v
+	return nil
+}
+
+// MarshalJSON implements json.Unmarshaler
+func (s *Schedule) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return fmt.Errorf("unable to unmarshal Schedule: %w", err)
+	}
+
+	*s = Schedule(str)
+
 	return nil
 }
 

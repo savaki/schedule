@@ -139,6 +139,18 @@ func TestSchedule_DynamoDB(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestSchedule_JSON(t *testing.T) {
+	want := New(900, 1700)
+
+	data, err := json.Marshal(want)
+	assert.Nil(t, err)
+
+	var got Schedule
+	err = json.Unmarshal(data, &got)
+	assert.Nil(t, err)
+	assert.Equal(t, string(want), string(got))
+}
+
 func TestOrder(t *testing.T) {
 	v := []string{
 		"1:::",
@@ -566,14 +578,14 @@ func TestSchedules_Next(t *testing.T) {
 }
 
 func TestSchedules_UnmarshalJSON(t *testing.T) {
-	var s Schedules
-	err := json.Unmarshal([]byte(`["1:::0500:2100::"]`), &s)
+	want := Schedules{New(900, 1700)}
+	data, err := json.Marshal(want)
 	assert.Nil(t, err)
-	assert.Len(t, s, 1)
 
-	err = json.Unmarshal([]byte(`null`), &s)
+	var got Schedules
+	err = json.Unmarshal(data, &got)
 	assert.Nil(t, err)
-	assert.Len(t, s, 0)
+	assert.Equal(t, got, want)
 }
 
 func TestExclude(t *testing.T) {
